@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	upgradeFailed = "Upgrade failed: "
+	upgradeFailed = "websocket: upgrade failed: "
 
 	WsDefaultPingInterval   = 30 * time.Second
 	WsDefaultPingTimeout    = 60 * time.Second
@@ -272,6 +272,7 @@ type Transport struct {
 	TLSConfig   *tls.Config
 
 	RequestHeader http.Header
+	CheckOrigin   func(*http.Request) bool
 }
 
 func (wst *Transport) Connect(url string) (conn *Connection, err error) {
@@ -299,10 +300,7 @@ func (wst *Transport) HandleConnection(
 	upgrade := &websocket.Upgrader{
 		ReadBufferSize:  wst.BufferSize,
 		WriteBufferSize: wst.BufferSize,
-		CheckOrigin: func(r *http.Request) bool {
-			// TODO: check origin
-			return true
-		},
+		CheckOrigin:     wst.CheckOrigin,
 	}
 	socket, err := upgrade.Upgrade(w, r, nil)
 	if err != nil {
@@ -315,7 +313,7 @@ func (wst *Transport) HandleConnection(
 
 func (wst *Transport) Serve(w http.ResponseWriter, r *http.Request) {}
 
-func GetDefaultWebsocketTransport() *Transport {
+func GetDefaultWebsocketTransport(checkOrigin func(*http.Request) bool) *Transport {
 	return &Transport{
 		Protocol:       protocol.Protocol4,
 		PingInterval:   WsDefaultPingInterval,
@@ -326,5 +324,6 @@ func GetDefaultWebsocketTransport() *Transport {
 		BinaryMessage:  false,
 		UnsecureTLS:    false,
 		TLSConfig:      nil,
+		CheckOrigin:    checkOrigin,
 	}
 }
